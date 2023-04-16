@@ -1,5 +1,5 @@
-import useWindowSize from "react-use/lib/useWindowSize";
 import Confetti from "react-confetti";
+import useWindowSize from "react-use/lib/useWindowSize";
 
 import {
   Box,
@@ -10,27 +10,30 @@ import {
   IconButton,
   Link as ChakraLink,
   Text,
+  useDisclosure,
   VStack,
 } from "@chakra-ui/react";
 import { useUser } from "@supabase/auth-helpers-react";
 import {
   IconCamera,
   IconCameraOff,
+  IconDeviceGamepad,
   IconLogout,
   IconMicrophone,
   IconMicrophoneOff,
   IconUserMinus,
   IconUserPlus,
 } from "@tabler/icons-react";
-import Link from "next/link";
 import {
   MeetingProvider,
   useMeeting,
   useParticipant,
 } from "@videosdk.live/react-sdk";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactPlayer from "react-player";
 import { authToken } from "../lib/videosdk";
+import { Charades } from "./Charades";
 
 function ParticipantView({ participantId }: { participantId: string }) {
   const micRef = useRef<HTMLMediaElement | null>(null);
@@ -109,6 +112,8 @@ function Controls({ participantId }: { participantId: string }) {
   const { width, height } = useWindowSize();
   const { webcamOn, micOn } = useParticipant(participantId);
   const { leave, toggleMic, toggleWebcam } = useMeeting();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
   return (
     <HStack spacing={2}>
       <IconButton
@@ -153,6 +158,14 @@ function Controls({ participantId }: { participantId: string }) {
       >
         {friends ? "Remove" : "Add"} Friend
       </Button>
+      <Button
+        leftIcon={<Icon as={IconDeviceGamepad} boxSize={6} />}
+        onClick={onOpen}
+        rounded="full"
+      >
+        Let's Game
+      </Button>
+      <Charades onClose={onClose} isOpen={isOpen} />
     </HStack>
   );
 }
