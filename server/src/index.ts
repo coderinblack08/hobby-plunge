@@ -19,7 +19,7 @@ let queue: any[] = [];
 let activeSockets = new Set<string>();
 
 io.on("connection", socket => {
-  console.log("connected", socket.id);
+  console.log("connected", socket.id, activeSockets);
   const existingSocket = activeSockets.has(socket.id);
   if (!existingSocket) {
     activeSockets.add(socket.id);
@@ -45,12 +45,12 @@ io.on("connection", socket => {
     socket.on("update", (socketId, data) => {
       socket.to(socketId).emit("update", data);
     });
-    socket.on("leave", otherId => {
-      socket.to(otherId).emit("leave");
-      queue = queue.filter(q => q.socketId !== socket.id);
-      activeSockets.delete(socket.id);
-      console.log(socket.id + " has left", queue);
-    });
+    // socket.on("leave", otherId => {
+    //   socket.to(otherId).emit("leave");
+    //   queue = queue.filter(q => q.socketId !== socket.id);
+    //   activeSockets.delete(socket.id);
+    //   console.log(socket.id + " has left", queue);
+    // });
     socket.on("disconnect", () => {
       queue = queue.filter(q => q.socketId !== socket.id);
       activeSockets.delete(socket.id);

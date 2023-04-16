@@ -1,68 +1,53 @@
 import { Box, Center, Spinner } from "@chakra-ui/react";
-import { createServerSupabaseClient } from "@supabase/auth-helpers-nextjs";
 import {
-  useSessionContext,
-  useSupabaseClient,
-} from "@supabase/auth-helpers-react";
-import { useRouter } from "next/router";
-import Peer from "peerjs";
-import React from "react";
-import { useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
-import { shallow } from "zustand/shallow";
-import { findMatch, listenOnDevices, useStore } from "../lib/mediastream";
-import { socket } from "../lib/socket";
+  createServerSupabaseClient,
+  User,
+} from "@supabase/auth-helpers-nextjs";
+import { useSupabaseClient } from "@supabase/auth-helpers-react";
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
+import { GetServerSidePropsContext } from "next";
+import { useEffect, useState } from "react";
 
-export default function Call({ user }) {
-  const { isLoading, session } = useSessionContext();
-  const [calling, pending] = useStore(
-    (state) => [state.calling, state.pending],
-    shallow
-  );
+export default function Call({ user }: { user: User }) {
+  const supabase = useSupabaseClient();
+  const [users, setUsers] = useState<{
+    [key: string]: {
+      id: string;
+      name: string;
+      photo: string;
+    };
+  }>({});
 
-  const peer = useRef<Peer | null>(null);
-  const router = useRouter();
-  const supabaseClient = useSupabaseClient();
+  const channel = supabase.channel("ledger", {
+    config: { presence: { key: "global" } },
+  });
 
   useEffect(() => {
-    function onConnect() {
-      console.log("connected");
-      // await findMatch(peer.current!, user.id, socket);
-    }
-    socket.on("connect", onConnect);
-    // if (typeof window !== "undefined") {
-    //   import("peerjs").then(({ default: Peer }) => {
-    //     peer.current = new Peer(undefined as any, {
-    //       path: "/peerjs",
-    //       host: "localhost",
-    //       port: 9000,
-    //     });
-    //     peer.current.on("open", () => {
-    //       listenOnDevices(peer.current!, socket);
-    //     });
-    //   });
-    // }
-    return () => {
-      socket.off("connect", onConnect);
-      socket.emit("leave");
-    };
+    channel.subscribe(async (status: `${REALTIME_SUBSCRIBE_STATES}`) => {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        await channel.track({
+          id: user.id,
+          photo: user.user_metadata.avatar_url,
+          name: user.user_metadata.user_name,
+        });
+      }
+    });
+    channel.on("presence", { event: "sync" }, () => {
+      setUsers(channel.presenceState().global);
+    });
   }, []);
 
   return (
     <Box>
-      {pending ? (
-        <Center h="100vh">
-          <Spinner mr={4} />
-          Waiting for a match...
-        </Center>
-      ) : (
-        <Center>Calling with {JSON.stringify(calling, null, 2)}</Center>
-      )}
+      <Center h="100vh">
+        <Spinner mr={4} />
+        Waiting for a match...
+      </Center>
     </Box>
   );
 }
 
-export const getServerSideProps = async (ctx) => {
+export const getServerSideProps = async (ctx: GetServerSidePropsContext) => {
   // Create authenticated Supabase Client
   const supabase = createServerSupabaseClient(ctx);
   // Check if we have a session
